@@ -1,0 +1,11 @@
+spring.application.name: person-svc
+
+server:
+  port: 8082
+  servlet:
+    context-path: /tla/personSvc
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs

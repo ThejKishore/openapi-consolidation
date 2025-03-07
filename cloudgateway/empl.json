@@ -1,0 +1,83 @@
+{
+    "components": {
+        "schemas": {
+            "Employee": {
+                "properties": {
+                    "employeeEmail": {
+                        "type": "string"
+                    },
+                    "employeeId": {
+                        "format": "int32",
+                        "type": "integer"
+                    },
+                    "employeeName": {
+                        "type": "string"
+                    },
+                    "employeeSurname": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "info": {
+        "title": "OpenAPI definition",
+        "version": "v0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+        "/v1/api/employees": {
+            "get": {
+                "operationId": "getEmployee_1",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/Employee"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "tags": [
+                    "employee-rsc"
+                ]
+            }
+        },
+        "/v1/web/employees": {
+            "get": {
+                "operationId": "getEmployee",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/Employee"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "tags": [
+                    "employee-rsc"
+                ]
+            }
+        }
+    },
+    "servers": [
+        {
+            "description": "Generated server url",
+            "url": "http://localhost:8081/tla/emplSvc"
+        }
+    ]
+}

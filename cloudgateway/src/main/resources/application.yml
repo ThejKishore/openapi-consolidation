@@ -1,0 +1,26 @@
+spring.application.name: cloudgateway
+server:
+  port: 9000
+
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+spring:
+  cloud:
+    gateway:
+      mvc:
+        routes:
+          - id: "employeesvc"
+            uri: http://localhost:8081/tla/emplSvc
+            predicates:
+              - Path=/tla/emplSvc/**
+          - id: "personsvc"
+            uri: http://localhost:8082/tla/personSvc
+            predicates:
+              - Path=/tla/personSvc/**
+logging:
+  level:
+    org.springframework.cloud.gateway.server.mvc: TRACE
+
