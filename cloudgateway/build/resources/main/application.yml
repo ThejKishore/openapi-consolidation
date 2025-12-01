@@ -8,9 +8,33 @@ springdoc:
     path: /api-docs
     enabled: true
 spring:
+  datasource:
+    url: jdbc:h2:mem:gwdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always
   cloud:
+    kubernetes:
+      enabled: false
+      config:
+        enabled: false
+      secrets:
+        enabled: false
+      reload:
+        enabled: false
+      discovery:
+        enabled: false
     gateway:
       mvc:
+#        default-filters:
+#          - StripPrefix=2
         routes:
           - id: "employeesvc"
             uri: http://localhost:8081/tla/emplSvc
