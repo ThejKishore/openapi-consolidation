@@ -19,6 +19,46 @@ Vue.component('route-modal', {
         },
         updateField(field, value) {
             this.$emit('update-field', { field, value });
+        },
+        addPredicate() {
+            if (!this.formData.newPredicateType || !this.formData.newPredicateValue) {
+                alert('Please select type and enter value');
+                return;
+            }
+            const predicate = {
+                name: this.formData.newPredicateType,
+                args: this.formData.newPredicateValue
+            };
+            this.$emit('add-predicate', predicate);
+        },
+        removePredicate(index) {
+            this.$emit('remove-predicate', index);
+        },
+        addFilter() {
+            if (!this.formData.newFilterType || !this.formData.newFilterValue) {
+                alert('Please select filter type and enter value');
+                return;
+            }
+            const filter = {
+                name: this.formData.newFilterType,
+                args: this.formData.newFilterValue
+            };
+            this.$emit('add-filter', filter);
+        },
+        removeFilter(index) {
+            this.$emit('remove-filter', index);
+        },
+        addMetadata() {
+            if (!this.formData.newMetadataKey || !this.formData.newMetadataValue) {
+                alert('Please enter both key and value');
+                return;
+            }
+            const metadata = {};
+            metadata[this.formData.newMetadataKey] = this.formData.newMetadataValue;
+            this.$emit('add-metadata', metadata);
+        },
+        removeMetadata(key) {
+            this.$emit('remove-metadata', key);
         }
     },
     template: `
@@ -104,28 +144,53 @@ Vue.component('route-modal', {
                             Path Predicates
                         </h4>
 
-                        <div class="mb-4">
-                            <label class="block text-gray-300 font-semibold mb-2">Predicate Type</label>
-                            <select 
-                                :value="formData.predicateType"
-                                @input="updateField('predicateType', \$event.target.value)"
-                                class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
-                                <option value="">Select predicate type</option>
-                                <option value="Path">Path Pattern</option>
-                                <option value="Method">HTTP Method</option>
-                                <option value="Header">Header</option>
-                            </select>
-                            <p class="text-gray-400 text-sm mt-1">Condition to match incoming requests</p>
+                        <!-- Existing Predicates List -->
+                        <div v-if="formData.predicates && formData.predicates.length > 0" class="mb-4">
+                            <p class="text-gray-400 text-sm mb-2">Added Predicates:</p>
+                            <div class="space-y-2">
+                                <div v-for="(pred, idx) in formData.predicates" :key="idx" class="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
+                                    <div>
+                                        <span class="text-white font-semibold">{{ pred.name }}</span>
+                                        <span class="text-gray-400 text-sm ml-2">{{ JSON.stringify(pred.args) }}</span>
+                                    </div>
+                                    <button @click="removePredicate(idx)" class="text-red-400 hover:text-red-300 transition-colors">
+                                        <span class="material-icons text-lg">delete</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div v-if="formData.predicateType === 'Path'" class="mb-4">
-                            <label class="block text-gray-300 font-semibold mb-2">Path Pattern</label>
-                            <input 
-                                :value="formData.pathPattern"
-                                @input="updateField('pathPattern', \$event.target.value)"
-                                type="text" 
-                                placeholder="e.g., /api/** or /users/{id}"
-                                class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                        <!-- Add New Predicate -->
+                        <div class="border-t border-gray-700 pt-4">
+                            <p class="text-gray-300 font-semibold mb-3">Add New Predicate</p>
+                            
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Predicate Type</label>
+                                <select 
+                                    :value="formData.newPredicateType || ''"
+                                    @input="updateField('newPredicateType', \$event.target.value)"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                                    <option value="">Select predicate type</option>
+                                    <option value="Path">Path Pattern</option>
+                                    <option value="Method">HTTP Method</option>
+                                    <option value="Header">Header</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Predicate Value</label>
+                                <input 
+                                    :value="formData.newPredicateValue || ''"
+                                    @input="updateField('newPredicateValue', \$event.target.value)"
+                                    type="text" 
+                                    placeholder="e.g., /api/** or GET or Accept=application/json"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                            </div>
+
+                            <button @click="addPredicate" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <span class="material-icons">add</span>
+                                Add Predicate
+                            </button>
                         </div>
                     </div>
 
@@ -136,38 +201,109 @@ Vue.component('route-modal', {
                             Route Filters
                         </h4>
 
-                        <div class="mb-4">
-                            <label class="block text-gray-300 font-semibold mb-2">Filter Type</label>
-                            <select 
-                                :value="formData.filterType"
-                                @input="updateField('filterType', \$event.target.value)"
-                                class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
-                                <option value="">Select filter type</option>
-                                <option value="StripPrefix">Strip Prefix</option>
-                                <option value="RewritePath">Rewrite Path</option>
-                                <option value="AddRequestHeader">Add Header</option>
-                            </select>
-                            <p class="text-gray-400 text-sm mt-1">Transformation to apply to requests/responses</p>
+                        <!-- Existing Filters List -->
+                        <div v-if="formData.filters && formData.filters.length > 0" class="mb-4">
+                            <p class="text-gray-400 text-sm mb-2">Added Filters:</p>
+                            <div class="space-y-2">
+                                <div v-for="(filter, idx) in formData.filters" :key="idx" class="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
+                                    <div>
+                                        <span class="text-white font-semibold">{{ filter.name }}</span>
+                                        <span class="text-gray-400 text-sm ml-2">{{ JSON.stringify(filter.args) }}</span>
+                                    </div>
+                                    <button @click="removeFilter(idx)" class="text-red-400 hover:text-red-300 transition-colors">
+                                        <span class="material-icons text-lg">delete</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div v-if="formData.filterType === 'StripPrefix'" class="mb-4">
-                            <label class="block text-gray-300 font-semibold mb-2">Strip Path</label>
-                            <input 
-                                :value="formData.stripPath"
-                                @input="updateField('stripPath', \$event.target.value)"
-                                type="text" 
-                                placeholder="e.g., 1 (number of segments to strip)"
-                                class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                        <!-- Add New Filter -->
+                        <div class="border-t border-gray-700 pt-4">
+                            <p class="text-gray-300 font-semibold mb-3">Add New Filter</p>
+                            
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Filter Type</label>
+                                <select 
+                                    :value="formData.newFilterType || ''"
+                                    @input="updateField('newFilterType', \$event.target.value)"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                                    <option value="">Select filter type</option>
+                                    <option value="StripPrefix">Strip Prefix</option>
+                                    <option value="RewritePath">Rewrite Path</option>
+                                    <option value="AddRequestHeader">Add Header</option>
+                                    <option value="AddResponseHeader">Add Response Header</option>
+                                    <option value="RemoveRequestHeader">Remove Request Header</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Filter Value</label>
+                                <input 
+                                    :value="formData.newFilterValue || ''"
+                                    @input="updateField('newFilterValue', \$event.target.value)"
+                                    type="text" 
+                                    placeholder="e.g., 1 or /path,/newpath or X-Custom-Header,value"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                            </div>
+
+                            <button @click="addFilter" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <span class="material-icons">add</span>
+                                Add Filter
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metadata Section -->
+                    <div class="mb-6 p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                        <h4 class="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+                            <span class="material-icons">label</span>
+                            Route Metadata
+                        </h4>
+
+                        <!-- Existing Metadata List -->
+                        <div v-if="formData.metadata && Object.keys(formData.metadata).length > 0" class="mb-4">
+                            <p class="text-gray-400 text-sm mb-2">Added Metadata:</p>
+                            <div class="space-y-2">
+                                <div v-for="(value, key) in formData.metadata" :key="key" class="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
+                                    <div>
+                                        <span class="text-white font-semibold">{{ key }}</span>
+                                        <span class="text-gray-400 text-sm ml-2">{{ value }}</span>
+                                    </div>
+                                    <button @click="removeMetadata(key)" class="text-red-400 hover:text-red-300 transition-colors">
+                                        <span class="material-icons text-lg">delete</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div v-if="formData.filterType === 'RewritePath'" class="mb-4">
-                            <label class="block text-gray-300 font-semibold mb-2">Rewrite Pattern</label>
-                            <input 
-                                :value="formData.rewritePattern"
-                                @input="updateField('rewritePattern', \$event.target.value)"
-                                type="text" 
-                                placeholder="e.g., /api/(?<segment>.*), /v1/\${segment}"
-                                class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                        <!-- Add New Metadata -->
+                        <div class="border-t border-gray-700 pt-4">
+                            <p class="text-gray-300 font-semibold mb-3">Add New Metadata</p>
+                            
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Key</label>
+                                <input 
+                                    :value="formData.newMetadataKey || ''"
+                                    @input="updateField('newMetadataKey', \$event.target.value)"
+                                    type="text" 
+                                    placeholder="e.g., environment, version, team"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-gray-300 font-semibold mb-2">Value</label>
+                                <input 
+                                    :value="formData.newMetadataValue || ''"
+                                    @input="updateField('newMetadataValue', \$event.target.value)"
+                                    type="text" 
+                                    placeholder="e.g., production, v1.0.0, platform-team"
+                                    class="w-full px-4 py-2 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-400 transition-colors">
+                            </div>
+
+                            <button @click="addMetadata" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <span class="material-icons">add</span>
+                                Add Metadata
+                            </button>
                         </div>
                     </div>
                 </div>

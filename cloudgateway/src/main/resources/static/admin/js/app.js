@@ -108,6 +108,17 @@ new Vue({
 
         editRoute(route) {
             this.formData = JSON.parse(JSON.stringify(route));
+            // Ensure arrays and objects exist
+            if (!this.formData.predicates) this.formData.predicates = [];
+            if (!this.formData.filters) this.formData.filters = [];
+            if (!this.formData.metadata) this.formData.metadata = {};
+            // Initialize input fields for adding new items
+            this.formData.newPredicateType = '';
+            this.formData.newPredicateValue = '';
+            this.formData.newFilterType = '';
+            this.formData.newFilterValue = '';
+            this.formData.newMetadataKey = '';
+            this.formData.newMetadataValue = '';
             this.modalType = 'edit';
             this.showModal = true;
         },
@@ -227,11 +238,13 @@ new Vue({
                 enabled: true,
                 predicates: [],
                 filters: [],
-                predicateType: '',
-                pathPattern: '',
-                filterType: '',
-                stripPath: '',
-                rewritePattern: ''
+                metadata: {},
+                newPredicateType: '',
+                newPredicateValue: '',
+                newFilterType: '',
+                newFilterValue: '',
+                newMetadataKey: '',
+                newMetadataValue: ''
             };
             this.modalType = 'create';
             this.showModal = true;
@@ -247,11 +260,13 @@ new Vue({
                 enabled: true,
                 predicates: [],
                 filters: [],
-                predicateType: '',
-                pathPattern: '',
-                filterType: '',
-                stripPath: '',
-                rewritePattern: ''
+                metadata: {},
+                newPredicateType: '',
+                newPredicateValue: '',
+                newFilterType: '',
+                newFilterValue: '',
+                newMetadataKey: '',
+                newMetadataValue: ''
             };
         },
 
@@ -267,7 +282,60 @@ new Vue({
 
         updateFormField(payload) {
             this.formData[payload.field] = payload.value;
-        }
+        },
+
+        // Predicate methods
+        addPredicate(predicate) {
+            if (!this.formData.predicates) {
+                this.formData.predicates = [];
+            }
+            this.formData.predicates.push(predicate);
+            // Clear input fields
+            this.formData.newPredicateType = '';
+            this.formData.newPredicateValue = '';
+        },
+
+        removePredicate(index) {
+            if (this.formData.predicates) {
+                this.formData.predicates.splice(index, 1);
+            }
+        },
+
+        // Filter methods
+        addFilter(filter) {
+            if (!this.formData.filters) {
+                this.formData.filters = [];
+            }
+            this.formData.filters.push(filter);
+            // Clear input fields
+            this.formData.newFilterType = '';
+            this.formData.newFilterValue = '';
+        },
+
+        removeFilter(index) {
+            if (this.formData.filters) {
+                this.formData.filters.splice(index, 1);
+            }
+        },
+
+        // Metadata methods
+        addMetadata(metadata) {
+            if (!this.formData.metadata) {
+                this.formData.metadata = {};
+            }
+            Object.assign(this.formData.metadata, metadata);
+            // Clear input fields
+            this.formData.newMetadataKey = '';
+            this.formData.newMetadataValue = '';
+        },
+
+        removeMetadata(key) {
+            if (this.formData.metadata && this.formData.metadata[key]) {
+                delete this.formData.metadata[key];
+                // Force Vue to detect the change
+                this.$set(this.formData, 'metadata', { ...this.formData.metadata });
+            }
+        },
     },
     template: `
         <div class="h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -368,7 +436,13 @@ new Vue({
                 @close="closeModal"
                 @create="createRoute"
                 @update="updateRoute"
-                @update-field="updateFormField">
+                @update-field="updateFormField"
+                @add-predicate="addPredicate"
+                @remove-predicate="removePredicate"
+                @add-filter="addFilter"
+                @remove-filter="removeFilter"
+                @add-metadata="addMetadata"
+                @remove-metadata="removeMetadata">
             </route-modal>
         </div>
     `
