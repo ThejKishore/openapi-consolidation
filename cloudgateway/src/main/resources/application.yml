@@ -1,4 +1,5 @@
 spring.application.name: cloudgateway
+
 server:
   port: 9000
 
@@ -8,18 +9,37 @@ springdoc:
     path: /api-docs
     enabled: true
 spring:
+  main:
+    allow-bean-definition-overriding: true
   datasource:
     url: jdbc:h2:mem:gwdb;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
   h2:
     console:
       enabled: true
       path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
   sql:
     init:
       mode: always
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/oauth2
+          jwk-set-uri: http://localhost:8081/oauth2/jwks
   cloud:
     kubernetes:
       enabled: false
@@ -44,7 +64,25 @@ spring:
             uri: http://localhost:8082/tla/personSvc
             predicates:
               - Path=/tla/personSvc/**
+          - id: "externalsvc"
+            uri: https://httpbin.org/
+            predicates:
+              - Path=/tla/externalsvc/**
+            filters:
+              - RewritePath=/tla/externalsvc/(?<segment>.*), /$\{segment}
+              - AddRequestHeader=X-Request-Foo, Bar
+#                - RemoveRequestHeader=Cookie
+#                - AddResponseHeader=X-Response-Foo, Bar
 logging:
   level:
-    org.springframework.cloud.gateway.server.mvc: TRACE
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.server.mvc: DEBUG
+    org.springframework.cloud.gateway.server.mvc.handler: DEBUG
+    org.springframework.cloud.gateway.server.mvc.filter: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation: DEBUG
+    org.springframework.web.client: DEBUG
+    # Root logger for catching all requests
+    root: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 

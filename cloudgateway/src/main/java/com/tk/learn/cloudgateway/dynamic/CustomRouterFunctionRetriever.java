@@ -29,15 +29,18 @@ public class CustomRouterFunctionRetriever {
         try {
             List<DbRouteModels.DbRoute> routes = loadRoutesFromDb();
             if (routes.isEmpty()) {
-                log.info("No DB routes found");
-                return null;
+                log.warn("⚠️ No enabled DB routes found, returning empty but valid router function");
+                return route().build();  // Return empty valid RouterFunction instead of null
             }
+
+            log.info("📋 Building DB RouterFunction with {} enabled route(s):", routes.size());
 
             var builder = route();
             routes.stream()
                     .filter(r -> r.enabled)
                     .sorted(Comparator.comparing(r -> Optional.ofNullable(r.order).orElse(0)))
                     .forEach(r -> {
+                        log.info("  ✓ Route: {} [enabled] -> {}", r.id, r.uri);
                         // Currently support Path predicate(s) and forward to URI.
                         List<String> paths = r.predicates.stream()
                                 .filter(p -> "Path".equalsIgnoreCase(p.name()))
@@ -45,9 +48,23 @@ public class CustomRouterFunctionRetriever {
                                 .filter(StringUtils::hasText)
                                 .toList();
 
+                        if (!paths.isEmpty()) {
+                            for (String p : paths) {
+                                log.info("    - Predicate: Path {}", p);
+                            }
+                        }
+
+                        // Log filters (currently not applied - use YAML config for filters)
+                        if (r.filters != null && !r.filters.isEmpty()) {
+                            for (DbRouteModels.FilterRow filter : r.filters) {
+                                log.warn("    ⚠️ Filter {} not yet supported in DB routes - use YAML config instead", filter.name());
+                            }
+                        }
+
                         URI uri = URI.create(r.uri);
                         if (paths.isEmpty()) {
                             // If no Path predicate provided, map everything
+                            log.warn("    ⚠️ No Path predicate provided, mapping to /**");
                             builder.route(path("/**"), http(uri));
                         } else {
                             for (String p : paths) {
@@ -56,11 +73,12 @@ public class CustomRouterFunctionRetriever {
                         }
                     });
             RouterFunction<?> rf = builder.build();
-            log.info("Built DB RouterFunction with {} routes", routes.size());
+            log.info("✅ DB RouterFunction built successfully with {} routes", routes.size());
             return rf;
         } catch (Exception e) {
-            log.error("Failed to build DB routes: {}", e.getMessage(), e);
-            return null;
+            log.error("❌ Failed to build DB routes: {}", e.getMessage(), e);
+            log.info("Returning empty but valid router function due to error");
+            return route().build();  // Return empty valid RouterFunction instead of null on error
         }
     }
 

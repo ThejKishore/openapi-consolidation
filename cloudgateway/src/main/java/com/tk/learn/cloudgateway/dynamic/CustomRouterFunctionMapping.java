@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.web.servlet.function.RouterFunctions.MATCHING_PATTERN_ATTRIBUTE;
 import static org.springframework.web.servlet.function.RouterFunctions.REQUEST_ATTRIBUTE;
+import static org.springframework.web.servlet.function.RouterFunctions.route;
 
 /**
  * Custom RouterFunctionMapping that allows dynamically refreshing the router function
@@ -39,21 +40,33 @@ public class CustomRouterFunctionMapping extends RouterFunctionMapping {
     }
 
     public void refresh() {
-        log.info("Refreshing the custom router function");
-        RouterFunction<?> dbRouterFunction = customRouterFunctionRetriever.retrieve();
-        RouterFunction<?> defaultSpringRoutingFunction = super.getRouterFunction();
-        RouterFunction<?> finalRouterFunction = getFinalRouterFunction(defaultSpringRoutingFunction, dbRouterFunction);
-        customRouterFunction.set(finalRouterFunction);
-        log.info("Refreshing of the custom router function finished: {}", finalRouterFunction);
+        try {
+            log.info("🔄 Starting gateway router function refresh...");
+            RouterFunction<?> dbRouterFunction = customRouterFunctionRetriever.retrieve();
+            RouterFunction<?> defaultSpringRoutingFunction = super.getRouterFunction();
+            RouterFunction<?> finalRouterFunction = getFinalRouterFunction(defaultSpringRoutingFunction, dbRouterFunction);
+            customRouterFunction.set(finalRouterFunction);
+            log.info("✅ Gateway router function refresh completed successfully");
+            log.debug("Final router function: {}", finalRouterFunction);
+        } catch (Exception e) {
+            log.error("❌ Failed to refresh gateway router function: {}", e.getMessage(), e);
+        }
     }
 
     private RouterFunction<?> getFinalRouterFunction(@Nullable RouterFunction<?> defaultRouterFunction,
                                                      @Nullable RouterFunction<?> dbRouterFunction) {
-        if (dbRouterFunction != null) {
+        if (dbRouterFunction != null && defaultRouterFunction != null) {
             // Place DB routes before default (YAML) so DB can override
-            return defaultRouterFunction != null ? dbRouterFunction.andOther(defaultRouterFunction) : dbRouterFunction;
+            return dbRouterFunction.andOther(defaultRouterFunction);
+        } else if (dbRouterFunction != null) {
+            return dbRouterFunction;
+        } else if (defaultRouterFunction != null) {
+            return defaultRouterFunction;
         }
-        return defaultRouterFunction;
+        // Fallback: return empty valid router function instead of null
+        // This prevents "Predicate must not be null" errors
+        log.warn("No router functions available (DB and default), returning empty router function");
+        return route().build();
     }
 
     @Override
