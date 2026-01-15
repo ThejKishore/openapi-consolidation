@@ -1,9 +1,6 @@
-package com.tk.learn.cloudgateway.service;
+package com.tk.learn.cloudgateway.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tk.learn.cloudgateway.domain.AuditResponse;
-import com.tk.learn.cloudgateway.domain.RouteAudit;
-import com.tk.learn.cloudgateway.repository.RouteAuditRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +27,7 @@ public class AuditService {
                 .action(action)
                 .version(version)
                 .createdBy(createdBy)
+                .createdAt(LocalDateTime.now())  // Set timestamp manually
                 .oldValue(oldValueJson)
                 .newValue(newValueJson)
                 .description(description)

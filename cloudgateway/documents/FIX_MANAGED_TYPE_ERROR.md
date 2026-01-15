@@ -8,7 +8,7 @@ The application was failing to start with the following error:
 Error creating bean with name 'routeRepository' defined in 
 com.tk.learn.cloudgateway.repository.RouteRepository defined in 
 @EnableJpaRepositories declared on JpaRepositoriesRegistrar.EnableJpaRepositoriesConfiguration: 
-Not a managed type: class com.tk.learn.cloudgateway.dynamic.DbRouteModels$DbRoute
+Not a managed type: class com.tk.learn.cloudgateway.common.dynamic.DbRouteModels$DbRoute
 ```
 
 ## Root Cause

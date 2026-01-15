@@ -1,4 +1,4 @@
-package com.tk.learn.cloudgateway.domain;
+package com.tk.learn.cloudgateway.health;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

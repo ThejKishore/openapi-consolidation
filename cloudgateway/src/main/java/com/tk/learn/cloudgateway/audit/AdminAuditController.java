@@ -1,7 +1,5 @@
-package com.tk.learn.cloudgateway.controller;
+package com.tk.learn.cloudgateway.audit;
 
-import com.tk.learn.cloudgateway.domain.AuditResponse;
-import com.tk.learn.cloudgateway.service.AuditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,6 +1,5 @@
-package com.tk.learn.cloudgateway.service;
+package com.tk.learn.cloudgateway.health;
 
-import com.tk.learn.cloudgateway.domain.HealthStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;

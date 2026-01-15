@@ -1,10 +1,10 @@
-package com.tk.learn.cloudgateway.service;
+package com.tk.learn.cloudgateway.route;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tk.learn.cloudgateway.domain.*;
+import com.tk.learn.cloudgateway.audit.AuditService;
 import com.tk.learn.cloudgateway.dynamic.CustomRouterFunctionMapping;
-import com.tk.learn.cloudgateway.dynamic.DbRouteModels;
-import com.tk.learn.cloudgateway.repository.RouteRepository;
+import com.tk.learn.cloudgateway.health.HealthCheckService;
+import com.tk.learn.cloudgateway.health.HealthStatus;
+import com.tk.learn.cloudgateway.util.JsonConverterUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,7 +23,7 @@ public class RouteService {
     private final AuditService auditService;
     private final HealthCheckService healthCheckService;
     private final CustomRouterFunctionMapping routerMapping;
-    private final ObjectMapper objectMapper;
+    private final JsonConverterUtil jsonConverter;
 
     @Transactional
     public RouteResponse createRoute(RouteRequest request, String createdBy) {
@@ -34,45 +33,23 @@ public class RouteService {
                 throw new IllegalArgumentException("Route with ID " + request.getId() + " already exists");
             }
 
-            // Create route record
-            jdbc.sql("INSERT INTO gw_routes (id, uri, order_no, enabled, version, created_by, updated_by, created_at, updated_at) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                .params(request.getId(), request.getUri(), request.getOrder(), request.getEnabled(), 1, createdBy, createdBy, LocalDateTime.now(), LocalDateTime.now())
+            // Serialize predicates, filters, and metadata to JSON
+            String predicatesJson = jsonConverter.serializePredicates(request.getPredicates());
+            String filtersJson = jsonConverter.serializeFilters(request.getFilters());
+            String metadataJson = jsonConverter.serializeMetadata(request.getMetadata());
+
+            // Insert into single table with JSON columns
+            jdbc.sql("INSERT INTO gw_routes (id, uri, order_no, enabled, version, predicates, filters, metadata, created_by, updated_by, created_at, updated_at) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                .params(request.getId(), request.getUri(), request.getOrder(), request.getEnabled(), 1,
+                    predicatesJson, filtersJson, metadataJson, createdBy, createdBy,
+                    LocalDateTime.now(), LocalDateTime.now())
                 .update();
-
-            // Add predicates
-            if (request.getPredicates() != null && !request.getPredicates().isEmpty()) {
-                for (int i = 0; i < request.getPredicates().size(); i++) {
-                    RouteRequest.PredicateRequest pred = request.getPredicates().get(i);
-                    jdbc.sql("INSERT INTO gw_route_predicates (route_id, ord, name, args) VALUES (?, ?, ?, ?)")
-                        .params(request.getId(), i, pred.getName(), pred.getArgs())
-                        .update();
-                }
-            }
-
-            // Add filters
-            if (request.getFilters() != null && !request.getFilters().isEmpty()) {
-                for (int i = 0; i < request.getFilters().size(); i++) {
-                    RouteRequest.FilterRequest filter = request.getFilters().get(i);
-                    jdbc.sql("INSERT INTO gw_route_filters (route_id, ord, name, args) VALUES (?, ?, ?, ?)")
-                        .params(request.getId(), i, filter.getName(), filter.getArgs())
-                        .update();
-                }
-            }
-
-            // Add metadata
-            if (request.getMetadata() != null && !request.getMetadata().isEmpty()) {
-                request.getMetadata().forEach((key, value) ->
-                    jdbc.sql("INSERT INTO gw_route_metadata (route_id, k, v) VALUES (?, ?, ?)")
-                        .params(request.getId(), key, value)
-                        .update()
-                );
-            }
 
             // Log audit
             auditService.logAction(request.getId(), "CREATE", 1, createdBy, null, request, "Route created");
 
-            // Refresh router - this makes the route available immediately
+            // Refresh router
             log.info("🔄 Refreshing gateway router function to pick up new route: {}", request.getId());
             routerMapping.refresh();
             log.info("✅ Gateway router function refreshed successfully");
@@ -89,7 +66,7 @@ public class RouteService {
         List<RouteResponse> routes = new ArrayList<>();
         try {
             List<Map<String, Object>> results = jdbc.sql(
-                    "SELECT id, uri, order_no, enabled, version, created_by, updated_by, created_at, updated_at FROM gw_routes ORDER BY order_no")
+                    "SELECT id, uri, order_no, enabled, version, predicates, filters, metadata, created_by, updated_by, created_at, updated_at FROM gw_routes ORDER BY order_no")
                 .query((rs, rowNum) -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", rs.getString("id"));
@@ -97,6 +74,9 @@ public class RouteService {
                     map.put("order", rs.getObject("order_no"));
                     map.put("enabled", rs.getBoolean("enabled"));
                     map.put("version", rs.getInt("version"));
+                    map.put("predicates", rs.getString("predicates"));
+                    map.put("filters", rs.getString("filters"));
+                    map.put("metadata", rs.getString("metadata"));
                     map.put("created_by", rs.getString("created_by"));
                     map.put("updated_by", rs.getString("updated_by"));
                     map.put("created_at", rs.getTimestamp("created_at").toLocalDateTime());
@@ -119,7 +99,7 @@ public class RouteService {
     public RouteResponse getRouteById(String routeId) {
         try {
             Map<String, Object> result = jdbc.sql(
-                    "SELECT id, uri, order_no, enabled, version, created_by, updated_by, created_at, updated_at FROM gw_routes WHERE id = ?")
+                    "SELECT id, uri, order_no, enabled, version, predicates, filters, metadata, created_by, updated_by, created_at, updated_at FROM gw_routes WHERE id = ?")
                 .param(routeId)
                 .query((rs, rowNum) -> {
                     Map<String, Object> map = new HashMap<>();
@@ -128,6 +108,9 @@ public class RouteService {
                     map.put("order", rs.getObject("order_no"));
                     map.put("enabled", rs.getBoolean("enabled"));
                     map.put("version", rs.getInt("version"));
+                    map.put("predicates", rs.getString("predicates"));
+                    map.put("filters", rs.getString("filters"));
+                    map.put("metadata", rs.getString("metadata"));
                     map.put("created_by", rs.getString("created_by"));
                     map.put("updated_by", rs.getString("updated_by"));
                     map.put("created_at", rs.getTimestamp("created_at").toLocalDateTime());
@@ -161,50 +144,22 @@ public class RouteService {
             // Get old value for audit
             RouteResponse oldValue = getRouteById(routeId);
 
-            // Update route
+            // Serialize predicates, filters, and metadata to JSON
+            String predicatesJson = jsonConverter.serializePredicates(request.getPredicates());
+            String filtersJson = jsonConverter.serializeFilters(request.getFilters());
+            String metadataJson = jsonConverter.serializeMetadata(request.getMetadata());
+
+            // Update route with new JSON columns
             int newVersion = currentVersion + 1;
-            jdbc.sql("UPDATE gw_routes SET uri = ?, order_no = ?, enabled = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?")
-                .params(request.getUri(), request.getOrder(), request.getEnabled(), newVersion, updatedBy, LocalDateTime.now(), routeId)
+            jdbc.sql("UPDATE gw_routes SET uri = ?, order_no = ?, enabled = ?, version = ?, predicates = ?, filters = ?, metadata = ?, updated_by = ?, updated_at = ? WHERE id = ?")
+                .params(request.getUri(), request.getOrder(), request.getEnabled(), newVersion,
+                    predicatesJson, filtersJson, metadataJson, updatedBy, LocalDateTime.now(), routeId)
                 .update();
-
-            // Delete old predicates, filters, metadata
-            jdbc.sql("DELETE FROM gw_route_predicates WHERE route_id = ?").param(routeId).update();
-            jdbc.sql("DELETE FROM gw_route_filters WHERE route_id = ?").param(routeId).update();
-            jdbc.sql("DELETE FROM gw_route_metadata WHERE route_id = ?").param(routeId).update();
-
-            // Add new predicates
-            if (request.getPredicates() != null && !request.getPredicates().isEmpty()) {
-                for (int i = 0; i < request.getPredicates().size(); i++) {
-                    RouteRequest.PredicateRequest pred = request.getPredicates().get(i);
-                    jdbc.sql("INSERT INTO gw_route_predicates (route_id, ord, name, args) VALUES (?, ?, ?, ?)")
-                        .params(routeId, i, pred.getName(), pred.getArgs())
-                        .update();
-                }
-            }
-
-            // Add new filters
-            if (request.getFilters() != null && !request.getFilters().isEmpty()) {
-                for (int i = 0; i < request.getFilters().size(); i++) {
-                    RouteRequest.FilterRequest filter = request.getFilters().get(i);
-                    jdbc.sql("INSERT INTO gw_route_filters (route_id, ord, name, args) VALUES (?, ?, ?, ?)")
-                        .params(routeId, i, filter.getName(), filter.getArgs())
-                        .update();
-                }
-            }
-
-            // Add new metadata
-            if (request.getMetadata() != null && !request.getMetadata().isEmpty()) {
-                request.getMetadata().forEach((key, value) ->
-                    jdbc.sql("INSERT INTO gw_route_metadata (route_id, k, v) VALUES (?, ?, ?)")
-                        .params(routeId, key, value)
-                        .update()
-                );
-            }
 
             // Log audit
             auditService.logAction(routeId, "UPDATE", newVersion, updatedBy, oldValue, request, "Route updated");
 
-            // Refresh router - this makes the updated route configuration available immediately
+            // Refresh router
             log.info("🔄 Refreshing gateway router function to pick up updated route: {}", routeId);
             routerMapping.refresh();
             log.info("✅ Gateway router function refreshed successfully");
@@ -231,19 +186,15 @@ public class RouteService {
             RouteResponse oldValue = getRouteById(routeId);
 
             // Log deletion audit BEFORE deleting the route
-            // This ensures the audit record is created with valid foreign key reference
             auditService.logAction(routeId, "DELETE", currentVersion + 1, deletedBy, oldValue, null, "Route deleted");
 
-            // Delete audit records and related data (to avoid foreign key constraint violation)
+            // Delete audit records (no FK constraint, but cleanup for consistency)
             jdbc.sql("DELETE FROM gw_route_audit WHERE route_id = ?").param(routeId).update();
-            jdbc.sql("DELETE FROM gw_route_predicates WHERE route_id = ?").param(routeId).update();
-            jdbc.sql("DELETE FROM gw_route_filters WHERE route_id = ?").param(routeId).update();
-            jdbc.sql("DELETE FROM gw_route_metadata WHERE route_id = ?").param(routeId).update();
 
-            // Delete route (this will be the last step - no foreign keys reference it anymore)
+            // Delete route (single table now, no need to delete related records)
             jdbc.sql("DELETE FROM gw_routes WHERE id = ?").param(routeId).update();
 
-            // Refresh router - this makes the deletion effective immediately
+            // Refresh router
             log.info("🔄 Refreshing gateway router function to remove deleted route: {}", routeId);
             routerMapping.refresh();
             log.info("✅ Gateway router function refreshed successfully");
@@ -291,36 +242,12 @@ public class RouteService {
         }
     }
 
-    // Helper method
+    // Helper method - simplified to work with single row result
     private RouteResponse buildRouteResponse(String routeId, Map<String, Object> row) {
-        // Get predicates
-        List<RouteResponse.PredicateDto> predicates = jdbc.sql(
-                "SELECT name, args FROM gw_route_predicates WHERE route_id = ? ORDER BY ord")
-            .param(routeId)
-            .query((rs, rowNum) -> RouteResponse.PredicateDto.builder()
-                .name(rs.getString("name"))
-                .args(rs.getString("args"))
-                .build())
-            .list();
-
-        // Get filters
-        List<RouteResponse.FilterDto> filters = jdbc.sql(
-                "SELECT name, args FROM gw_route_filters WHERE route_id = ? ORDER BY ord")
-            .param(routeId)
-            .query((rs, rowNum) -> RouteResponse.FilterDto.builder()
-                .name(rs.getString("name"))
-                .args(rs.getString("args"))
-                .build())
-            .list();
-
-        // Get metadata
-        Map<String, String> metadata = jdbc.sql(
-                "SELECT k, v FROM gw_route_metadata WHERE route_id = ?")
-            .param(routeId)
-            .query((rs, rowNum) -> Map.entry(rs.getString("k"), rs.getString("v")))
-            .list()
-            .stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        // Deserialize JSON columns directly from single row
+        List<RouteResponse.PredicateDto> predicates = jsonConverter.deserializePredicates((String) row.get("predicates"));
+        List<RouteResponse.FilterDto> filters = jsonConverter.deserializeFilters((String) row.get("filters"));
+        Map<String, String> metadata = jsonConverter.deserializeMetadata((String) row.get("metadata"));
 
         // Get health status
         HealthStatus health = healthCheckService.getCachedHealth(routeId);

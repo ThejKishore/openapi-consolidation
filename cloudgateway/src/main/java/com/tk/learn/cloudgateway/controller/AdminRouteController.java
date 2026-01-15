@@ -1,9 +1,9 @@
 package com.tk.learn.cloudgateway.controller;
 
-import com.tk.learn.cloudgateway.domain.RouteRequest;
-import com.tk.learn.cloudgateway.domain.RouteResponse;
-import com.tk.learn.cloudgateway.service.HealthCheckService;
-import com.tk.learn.cloudgateway.service.RouteService;
+import com.tk.learn.cloudgateway.health.HealthCheckService;
+import com.tk.learn.cloudgateway.route.RouteRequest;
+import com.tk.learn.cloudgateway.route.RouteResponse;
+import com.tk.learn.cloudgateway.route.RouteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
