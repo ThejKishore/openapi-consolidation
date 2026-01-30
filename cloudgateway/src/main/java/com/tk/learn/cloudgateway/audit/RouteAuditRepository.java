@@ -151,6 +151,19 @@ public class RouteAuditRepository {
     }
 
     /**
+     * Find all audit records, ordered by created_at (desc)
+     */
+    public List<RouteAudit> findAll() {
+        return jdbcClient.sql("""
+            SELECT audit_id, route_id, action, version, created_by, created_at, old_value, new_value, description
+            FROM gw_route_audit
+            ORDER BY created_at DESC
+            """)
+            .query(this::mapToAudit)
+            .list();
+    }
+
+    /**
      * Map ResultSet row to RouteAudit entity
      */
     private RouteAudit mapToAudit(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
