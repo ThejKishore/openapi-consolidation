@@ -71,5 +71,11 @@ public class AuditService {
     public List<AuditResponse> getVersionHistory(String routeId) {
         return getAuditHistory(routeId);
     }
-}
 
+    public List<AuditResponse> getAllAuditLogs() {
+        return auditRepository.findAll()
+            .stream()
+            .map(AuditResponse::fromEntity)
+            .collect(Collectors.toList());
+    }
+}

@@ -188,10 +188,8 @@ public class RouteService {
             // Log deletion audit BEFORE deleting the route
             auditService.logAction(routeId, "DELETE", currentVersion + 1, deletedBy, oldValue, null, "Route deleted");
 
-            // Delete audit records (no FK constraint, but cleanup for consistency)
-            jdbc.sql("DELETE FROM gw_route_audit WHERE route_id = ?").param(routeId).update();
-
             // Delete route (single table now, no need to delete related records)
+            // NOTE: Audit records are preserved for historical tracking
             jdbc.sql("DELETE FROM gw_routes WHERE id = ?").param(routeId).update();
 
             // Refresh router

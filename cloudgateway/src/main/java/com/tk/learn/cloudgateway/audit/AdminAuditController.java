@@ -15,16 +15,27 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/admin/audit")
 @RequiredArgsConstructor
 @Tag(name = "Audit Management", description = "Admin APIs for viewing route audit history")
 @SecurityRequirement(name = "bearer-jwt")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminAuditController {
 
     private final AuditService auditService;
 
-    @GetMapping("/routes/{routeId}")
+    @GetMapping("/api/audit/logs")
+    @Operation(summary = "Get all audit logs", description = "View all audit logs across all routes")
+    public ResponseEntity<List<AuditResponse>> getAllAuditLogs() {
+        try {
+            List<AuditResponse> audits = auditService.getAllAuditLogs();
+            return ResponseEntity.ok(audits);
+        } catch (Exception e) {
+            log.error("Failed to get all audit logs: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/api/admin/audit/routes/{routeId}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get audit history for route", description = "View all changes made to a specific route")
     public ResponseEntity<List<AuditResponse>> getRouteAuditHistory(@PathVariable String routeId) {
         try {
@@ -36,7 +47,8 @@ public class AdminAuditController {
         }
     }
 
-    @GetMapping("/users/{userId}")
+    @GetMapping("/api/admin/audit/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get audits by user", description = "View all changes made by a specific user")
     public ResponseEntity<List<AuditResponse>> getAuditsByUser(@PathVariable String userId) {
         try {
@@ -48,7 +60,8 @@ public class AdminAuditController {
         }
     }
 
-    @GetMapping("/actions/{action}")
+    @GetMapping("/api/admin/audit/actions/{action}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get audits by action", description = "View all changes of a specific action type (CREATE, UPDATE, DELETE)")
     public ResponseEntity<List<AuditResponse>> getAuditsByAction(@PathVariable String action) {
         try {
@@ -60,7 +73,8 @@ public class AdminAuditController {
         }
     }
 
-    @GetMapping("/date-range")
+    @GetMapping("/api/admin/audit/date-range")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get audits by date range", description = "View changes within a specific date range")
     public ResponseEntity<List<AuditResponse>> getAuditsByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
@@ -74,7 +88,8 @@ public class AdminAuditController {
         }
     }
 
-    @GetMapping("/versions/{routeId}")
+    @GetMapping("/api/admin/audit/versions/{routeId}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get version history", description = "View all versions of a route with their changes")
     public ResponseEntity<List<AuditResponse>> getVersionHistory(@PathVariable String routeId) {
         try {
@@ -86,4 +101,3 @@ public class AdminAuditController {
         }
     }
 }
-
